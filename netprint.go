@@ -10,11 +10,13 @@ import (
 )
 
 var (
-	addr = flag.String("addr", "localhost:7702", "The address on which netprint listens.")
-	tcp  = flag.Bool("tcp", false, "Accept raw TCP requests instead of HTTP.")
-	udp  = flag.Bool("udp", false, "Accept raw UDP packets instead of HTTP.")
-	mode = modeHTTP
-	mut  sync.Mutex
+	addr         = flag.String("addr", "localhost:7702", "The address on which netprint listens.")
+	tcp          = flag.Bool("tcp", false, "Accept raw TCP requests instead of HTTP.")
+	udp          = flag.Bool("udp", false, "Accept raw UDP packets instead of HTTP.")
+	responseCode = flag.Int("response-code", http.StatusOK, "HTTP response code")
+	responseText = flag.String("response-text", "", "Response body for TCP/HTTP requests")
+	mode         = modeHTTP
+	mut          sync.Mutex
 )
 
 func fatal(args ...interface{}) {
@@ -32,6 +34,19 @@ func init() {
 	}
 	if *udp {
 		mode = modeUDP
+	}
+
+	setFlags := map[string]bool{}
+	flag.Visit(func(f *flag.Flag) { setFlags[f.Name] = true })
+
+	if setFlags["response-code"] && mode != modeHTTP {
+		fatal("Cannot specify -response-code except in HTTP mode.")
+	}
+	if setFlags["response-text"] && mode == modeUDP {
+		fatal("-response-text doesn't make sense with -udp.")
+	}
+	if setFlags["response-code"] && (*responseCode < 100 || *responseCode >= 600) {
+		fatal("Invalid HTTP response code:", *responseCode)
 	}
 }
 
@@ -91,6 +106,9 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if !endingNewline {
 		fmt.Println()
 	}
+
+	w.WriteHeader(*responseCode)
+	w.Write([]byte(*responseText))
 }
 
 func runHTTP() error {
