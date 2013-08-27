@@ -2,7 +2,7 @@
 
 A pretty-printer for network requests.
 
-# To Do
+## To Do
 
 * Nice colorized printing
 * `-tcp`, for printing raw TCP requests

@@ -1,20 +1,20 @@
 package main
 
 import (
-	"net/http"
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"sync"
 )
 
 var (
 	addr = flag.String("addr", "localhost:7702", "The address on which netprint listens.")
-	tcp = flag.Bool("tcp", false, "Accept raw TCP requests instead of HTTP.")
-	udp = flag.Bool("udp", false, "Accept raw UDP packets instead of HTTP.")
+	tcp  = flag.Bool("tcp", false, "Accept raw TCP requests instead of HTTP.")
+	udp  = flag.Bool("udp", false, "Accept raw UDP packets instead of HTTP.")
 	mode = modeHTTP
-	mut sync.Mutex
+	mut  sync.Mutex
 )
 
 func fatal(args ...interface{}) {
