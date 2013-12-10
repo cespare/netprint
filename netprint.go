@@ -17,7 +17,7 @@ var (
 	responseCode = flag.Int("response-code", http.StatusOK, "Response code for HTTP requests.")
 	responseText = flag.String("response-text", "", "Response body for HTTP requests.")
 	mode         = modeHTTP
-	mut          sync.Mutex
+	mut          = &sync.Mutex{}
 )
 
 func fatal(args ...interface{}) {
@@ -153,7 +153,7 @@ func runTCP() error {
 }
 
 func handleUDP(conn *net.UDPConn) {
-	buf := make([]byte, 10 * 1024) // 10KB buffer to handle pretty damn big UDP packets
+	buf := make([]byte, 10*1024) // 10KB buffer to handle pretty damn big UDP packets
 	for {
 		n, addr, err := conn.ReadFromUDP(buf)
 		if err != nil {
