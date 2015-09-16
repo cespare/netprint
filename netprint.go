@@ -15,11 +15,10 @@ var (
 	addr         = flag.String("addr", "localhost:7702", "The address on which netprint listens.")
 	tcp          = flag.Bool("tcp", false, "Accept raw TCP requests instead of HTTP.")
 	udp          = flag.Bool("udp", false, "Accept raw UDP packets instead of HTTP.")
-	delayFlag    = flag.String("delay", "0ms", "How long to delay before responding (HTTP only).")
+	delay        = flag.Duration("delay", 0, "How long to delay before responding (HTTP only).")
 	responseCode = flag.Int("response-code", http.StatusOK, "Response code for HTTP requests.")
 	responseText = flag.String("response-text", "", "Response body for HTTP requests.")
 	mode         = modeHTTP
-	delay        time.Duration
 	mut          = &sync.Mutex{}
 )
 
@@ -90,7 +89,7 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 		fmt.Println()
 	}
 
-	time.Sleep(delay)
+	time.Sleep(*delay)
 
 	w.WriteHeader(*responseCode)
 	w.Write([]byte(*responseText))
@@ -175,14 +174,6 @@ func main() {
 	}
 	if *udp {
 		mode = modeUDP
-	}
-
-	if *delayFlag != "" {
-		var err error
-		delay, err = time.ParseDuration(*delayFlag)
-		if err != nil {
-			fatalf("Bad -delay value: %s", err)
-		}
 	}
 
 	setFlags := make(map[string]bool)
