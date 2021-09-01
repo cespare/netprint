@@ -40,52 +40,42 @@ const (
 	modeUDP
 )
 
-// copyRecordNewline is like io.Copy, but says whether the copied data ended in a newline.
-func copyRecordNewline(dst io.Writer, src io.Reader) (written int64, err error, endingNewline bool) {
-	buf := make([]byte, 32*1024)
-	for {
-		nr, er := src.Read(buf)
-		if nr > 0 {
-			nw, ew := dst.Write(buf[:nr])
-			if nw > 0 {
-				written += int64(nw)
-			}
-			if ew != nil {
-				err = ew
-				break
-			}
-			if nr != nw {
-				err = io.ErrShortWrite
-				break
-			}
-			endingNewline = buf[nr-1] == '\n'
-		}
-		if er == io.EOF {
-			break
-		}
-		if er != nil {
-			err = er
-			break
-		}
+// copyRecordNewline is like io.Copy, but says whether the copied data ended in
+// a newline.
+func copyRecordNewline(dst io.Writer, src io.Reader) (n int64, newline bool, err error) {
+	w := &lastByteWriter{w: dst}
+	n, err = io.Copy(w, src)
+	if n > 0 {
+		newline = w.c == '\n'
 	}
-	return written, err, endingNewline
+	return
+}
+
+type lastByteWriter struct {
+	w io.Writer
+	c byte
+}
+
+func (w *lastByteWriter) Write(b []byte) (int, error) {
+	n, err := w.w.Write(b)
+	if n > 0 {
+		w.c = b[n-1]
+	}
+	return n, err
 }
 
 func handleHTTP(w http.ResponseWriter, r *http.Request) {
-	// It's pretty dumb to synchronize all the HTTP handlers when net/http is doing such a good job of
-	// multiplexing requests onto goroutines for me, but this approach is simpler than constructing a
-	// non-concurrent HTTP server.
 	mut.Lock()
 	defer mut.Unlock()
 
 	fmt.Printf(">>>>> Request: %s\n", r.URL)
-	written, err, endingNewline := copyRecordNewline(os.Stdout, r.Body)
+	n, newline, err := copyRecordNewline(os.Stdout, r.Body)
 	if err != nil {
 		return
 	}
-	if written == 0 {
+	if n == 0 {
 		fmt.Println("(Empty body.)")
-	} else if !endingNewline {
+	} else if !newline {
 		fmt.Println()
 	}
 
@@ -104,13 +94,13 @@ func runHTTP() error {
 
 func handleTCP(conn net.Conn) {
 	fmt.Printf(">>>>> %s connected.\n", conn.RemoteAddr())
-	written, err, endingNewline := copyRecordNewline(os.Stdout, conn)
+	n, newline, err := copyRecordNewline(os.Stdout, conn)
 	if err != nil {
 		return
 	}
-	if written == 0 {
+	if n == 0 {
 		fmt.Println("(No data transmitted.)")
-	} else if !endingNewline {
+	} else if !newline {
 		fmt.Println()
 	}
 	fmt.Printf(">>>>> %s disconnected.\n", conn.RemoteAddr())
